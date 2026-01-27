@@ -7,30 +7,45 @@
     <title>Piano Trainer Pro</title>
     <style>
         :root { --bg: #0f172a; --accent: #38bdf8; --text: #f8fafc; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; }
-        #key-display { font-size: 5rem; font-weight: 800; color: var(--accent); margin-bottom: 1.5rem; height: 120px; }
-        .card { background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 20px; width: 85%; max-width: 400px; }
-        .modes { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
-        .mode-btn { background: #1e293b; border: 1px solid var(--accent); color: var(--text); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
-        .mode-btn.active { background: var(--accent); color: var(--bg); }
-        input[type=range] { width: 100%; margin: 15px 0; }
-        #start-btn { background: var(--accent); color: var(--bg); border: none; padding: 15px 30px; font-size: 1.2rem; font-weight: bold; border-radius: 50px; width: 100%; cursor: pointer; }
-        .stop { background: #ef4444 !important; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; overflow: hidden; }
+        
+        /* Key Display Area */
+        #display-container { height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; }
+        #key-display { font-size: 5rem; font-weight: 800; color: var(--accent); margin: 0; }
+        
+        /* Countdown Bar */
+        #progress-container { width: 60%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; margin-top: 15px; overflow: hidden; }
+        #progress-bar { width: 100%; height: 100%; background: var(--accent); transform-origin: left; }
+
+        /* Controls */
+        .card { background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 24px; width: 85%; max-width: 400px; backdrop-filter: blur(10px); }
+        .modes { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; }
+        .mode-btn { background: #1e293b; border: 1px solid #334155; color: var(--text); padding: 10px 15px; border-radius: 12px; cursor: pointer; flex: 1; font-weight: bold; }
+        .mode-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+        
+        input[type=range] { width: 100%; margin: 15px 0; accent-color: var(--accent); }
+        #start-btn { background: var(--accent); color: var(--bg); border: none; padding: 18px; font-size: 1.2rem; font-weight: bold; border-radius: 16px; width: 100%; cursor: pointer; transition: 0.2s; }
+        .stop { background: #ef4444 !important; color: white !important; }
     </style>
 </head>
 <body>
 
-    <div id="key-display">READY</div>
+    <div id="display-container">
+        <div id="key-display">READY</div>
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+        </div>
+    </div>
 
     <div class="card">
         <div class="modes">
-            <button class="mode-btn active" onclick="setMode('all', this)">All Keys</button>
+            <button class="mode-btn active" onclick="setMode('all', this)">All</button>
             <button class="mode-btn" onclick="setMode('major', this)">Major</button>
             <button class="mode-btn" onclick="setMode('minor', this)">Minor</button>
         </div>
 
-        <div style="margin-bottom: 10px;">Interval: <span id="sec-val">2.0</span>s</div>
-        <input type="range" id="sec-slider" min="0.5" max="10" step="0.5" value="2.0">
+        <div style="font-weight: bold;">Change every: <span id="sec-val">2.0</span>s</div>
+        <input type="range" id="sec-slider" min="1.0" max="10" step="0.5" value="2.0">
         
         <button id="start-btn" onclick="toggle()">START SESSION</button>
     </div>
@@ -41,14 +56,20 @@
         let currentPool = [...majorKeys, ...minorKeys];
         
         let intervalId = null;
+        let animationId = null;
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        const progressBar = document.getElementById('progress-bar');
+        const display = document.getElementById('key-display');
+        const slider = document.getElementById('sec-slider');
 
         function playBeep() {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-            osc.frequency.value = 880; // High A
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
             osc.start();
             osc.stop(audioCtx.currentTime + 0.1);
@@ -60,17 +81,26 @@
             if (mode === 'major') currentPool = majorKeys;
             else if (mode === 'minor') currentPool = minorKeys;
             else currentPool = [...majorKeys, ...minorKeys];
-            if (intervalId) { toggle(); toggle(); }
+            if (intervalId) restart();
         }
 
         function updateKey() {
-            const display = document.getElementById('key-display');
             let newKey;
             do {
                 newKey = currentPool[Math.floor(Math.random() * currentPool.length)];
             } while (newKey === display.innerText);
             display.innerText = newKey;
             playBeep();
+            resetProgressBar();
+        }
+
+        function resetProgressBar() {
+            progressBar.style.transition = 'none';
+            progressBar.style.transform = 'scaleX(1)';
+            setTimeout(() => {
+                progressBar.style.transition = `transform ${slider.value}s linear`;
+                progressBar.style.transform = 'scaleX(0)';
+            }, 50);
         }
 
         function toggle() {
@@ -80,18 +110,26 @@
                 intervalId = null;
                 btn.innerText = "START SESSION";
                 btn.classList.remove('stop');
+                display.innerText = "READY";
+                progressBar.style.transform = 'scaleX(0)';
             } else {
                 if (audioCtx.state === 'suspended') audioCtx.resume();
                 updateKey();
-                intervalId = setInterval(updateKey, document.getElementById('sec-slider').value * 1000);
+                intervalId = setInterval(updateKey, slider.value * 1000);
                 btn.innerText = "STOP";
                 btn.classList.add('stop');
             }
         }
 
-        document.getElementById('sec-slider').oninput = function() {
+        function restart() {
+            clearInterval(intervalId);
+            intervalId = setInterval(updateKey, slider.value * 1000);
+            updateKey();
+        }
+
+        slider.oninput = function() {
             document.getElementById('sec-val').innerText = this.value;
-            if (intervalId) { toggle(); toggle(); }
+            if (intervalId) restart();
         };
     </script>
 </body>
