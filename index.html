@@ -4,126 +4,94 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Piano Key Trainer</title>
+    <title>Piano Trainer Pro</title>
     <style>
-        :root {
-            --bg-color: #0f172a;
-            --accent-color: #38bdf8;
-            --text-color: #f8fafc;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            overflow: hidden;
-        }
-        #key-display {
-            font-size: 6rem;
-            font-weight: 800;
-            color: var(--accent-color);
-            text-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
-            margin-bottom: 2rem;
-            transition: transform 0.1s ease;
-        }
-        .card {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 2rem;
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
-            width: 80%;
-            max-width: 400px;
-            text-align: center;
-        }
-        .slider-label { margin-bottom: 10px; font-size: 1.1rem; }
-        input[type=range] {
-            width: 100%;
-            margin: 20px 0;
-            cursor: pointer;
-        }
-        button {
-            background-color: var(--accent-color);
-            color: var(--bg-color);
-            border: none;
-            padding: 15px 40px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: opacity 0.2s;
-        }
-        button:active { opacity: 0.8; transform: scale(0.98); }
+        :root { --bg: #0f172a; --accent: #38bdf8; --text: #f8fafc; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; }
+        #key-display { font-size: 5rem; font-weight: 800; color: var(--accent); margin-bottom: 1.5rem; height: 120px; }
+        .card { background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 20px; width: 85%; max-width: 400px; }
+        .modes { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        .mode-btn { background: #1e293b; border: 1px solid var(--accent); color: var(--text); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; }
+        .mode-btn.active { background: var(--accent); color: var(--bg); }
+        input[type=range] { width: 100%; margin: 15px 0; }
+        #start-btn { background: var(--accent); color: var(--bg); border: none; padding: 15px 30px; font-size: 1.2rem; font-weight: bold; border-radius: 50px; width: 100%; cursor: pointer; }
+        .stop { background: #ef4444 !important; }
     </style>
 </head>
 <body>
 
-    <div id="key-display">START</div>
+    <div id="key-display">READY</div>
 
     <div class="card">
-        <div class="slider-label">Hold Duration: <span id="sec-val">2.0</span>s</div>
+        <div class="modes">
+            <button class="mode-btn active" onclick="setMode('all', this)">All Keys</button>
+            <button class="mode-btn" onclick="setMode('major', this)">Major</button>
+            <button class="mode-btn" onclick="setMode('minor', this)">Minor</button>
+        </div>
+
+        <div style="margin-bottom: 10px;">Interval: <span id="sec-val">2.0</span>s</div>
         <input type="range" id="sec-slider" min="0.5" max="10" step="0.5" value="2.0">
-        <br>
-        <button id="start-btn">START SESSION</button>
+        
+        <button id="start-btn" onclick="toggle()">START SESSION</button>
     </div>
 
     <script>
-        const keys = [
-            'C Major', 'G Major', 'D Major', 'A Major', 'E Major', 'B Major', 'F# Major', 'Db Major', 'Ab Major', 'Eb Major', 'Bb Major', 'F Major',
-            'A Minor', 'E Minor', 'B Minor', 'F# Minor', 'C# Minor', 'G# Minor', 'Eb Minor', 'Bb Minor', 'F Minor', 'C Minor', 'G Minor', 'D Minor'
-        ];
+        const majorKeys = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'Db', 'Ab', 'Eb', 'Bb', 'F'];
+        const minorKeys = ['Am', 'Em', 'Bm', 'F#m', 'C#m', 'G#m', 'Ebm', 'Bbm', 'Fm', 'Cm', 'Gm', 'Dm'];
+        let currentPool = [...majorKeys, ...minorKeys];
         
         let intervalId = null;
-        const display = document.getElementById('key-display');
-        const slider = document.getElementById('sec-slider');
-        const secVal = document.getElementById('sec-val');
-        const btn = document.getElementById('start-btn');
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playBeep() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.frequency.value = 880; // High A
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function setMode(mode, btn) {
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            if (mode === 'major') currentPool = majorKeys;
+            else if (mode === 'minor') currentPool = minorKeys;
+            else currentPool = [...majorKeys, ...minorKeys];
+            if (intervalId) { toggle(); toggle(); }
+        }
 
         function updateKey() {
-            // Pick a random key different from the current one
+            const display = document.getElementById('key-display');
             let newKey;
             do {
-                newKey = keys[Math.floor(Math.random() * keys.length)];
+                newKey = currentPool[Math.floor(Math.random() * currentPool.length)];
             } while (newKey === display.innerText);
-            
             display.innerText = newKey;
-            
-            // Subtle pulse animation
-            display.style.transform = "scale(1.1)";
-            setTimeout(() => display.style.transform = "scale(1)", 100);
+            playBeep();
         }
 
-        function startTrainer() {
-            const ms = slider.value * 1000;
-            updateKey(); // Show first key immediately
-            intervalId = setInterval(updateKey, ms);
-            btn.innerText = "STOP";
-            btn.style.backgroundColor = "#ef4444"; // Red for stop
-        }
-
-        function stopTrainer() {
-            clearInterval(intervalId);
-            intervalId = null;
-            btn.innerText = "START SESSION";
-            btn.style.backgroundColor = "#38bdf8"; // Blue for start
-        }
-
-        btn.onclick = () => {
-            if (intervalId) stopTrainer();
-            else startTrainer();
-        };
-
-        slider.oninput = () => {
-            secVal.innerText = slider.value;
+        function toggle() {
+            const btn = document.getElementById('start-btn');
             if (intervalId) {
-                stopTrainer();
-                startTrainer();
+                clearInterval(intervalId);
+                intervalId = null;
+                btn.innerText = "START SESSION";
+                btn.classList.remove('stop');
+            } else {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                updateKey();
+                intervalId = setInterval(updateKey, document.getElementById('sec-slider').value * 1000);
+                btn.innerText = "STOP";
+                btn.classList.add('stop');
             }
+        }
+
+        document.getElementById('sec-slider').oninput = function() {
+            document.getElementById('sec-val').innerText = this.value;
+            if (intervalId) { toggle(); toggle(); }
         };
     </script>
 </body>
