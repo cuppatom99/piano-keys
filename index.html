@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Piano Key Randomizer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #121212; color: white; display: flex; flex-direction: column; justify-content: center; height: 100vh; margin: 0; }
+        #key-display { font-size: 8rem; font-weight: bold; height: 200px; display: flex; align-items: center; justify-content: center; }
+        .controls { margin-top: 20px; }
+        input[type=range] { width: 80%; }
+    </style>
+</head>
+<body>
+    <div id="key-display">Ready?</div>
+    <div class="controls">
+        <p>BPM: <span id="bpm-val">60</span></p>
+        <input type="range" id="bpm-slider" min="20" max="200" value="60">
+        <br><br>
+        <button id="start-btn" style="padding: 15px 30px; font-size: 1.2rem;">Start / Stop</button>
+    </div>
+
+    <script>
+        const keys = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'Db', 'Ab', 'Eb', 'Bb', 'F', 'Am', 'Em', 'Bm', 'F#m', 'C#m', 'G#m', 'Ebm', 'Bbm', 'Fm', 'Cm', 'Gm', 'Dm'];
+        let intervalId = null;
+        const display = document.getElementById('key-display');
+        const slider = document.getElementById('bpm-slider');
+        const bpmVal = document.getElementById('bpm-val');
+        const btn = document.getElementById('start-btn');
+
+        function changeKey() {
+            display.innerText = keys[Math.floor(Math.random() * keys.length)];
+        }
+
+        function toggle() {
+            if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+                btn.innerText = "Start";
+            } else {
+                const ms = 60000 / slider.value;
+                intervalId = setInterval(changeKey, ms);
+                btn.innerText = "Stop";
+            }
+        }
+
+        slider.oninput = () => { bpmVal.innerText = slider.value; if(intervalId) { toggle(); toggle(); } };
+        btn.onclick = toggle;
+    </script>
+</body>
+</html>
