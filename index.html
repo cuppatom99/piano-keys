@@ -6,89 +6,29 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Piano Trainer Pro</title>
     <style>
-        /* Your Strict Palette Mapping */
         :root {
-            --bg: #FCF7F2;      /* Cream */
-            --deep: #3D1F6E;    /* Purple (Primary Text/Shadows) */
-            --orange: #F2631A;  /* Orange (Slider/Active) */
-            --blue: #54BAF7;    /* Blue (Progress/Start) */
-            --yellow: #FFD447;  /* Yellow (Pause/Resume) */
-            --white: #FFFFFF;   /* White (Card) */
-            --black: #000000;   /* Black (Borders) */
+            --bg: #FCF7F2; --deep: #3D1F6E; --orange: #F2631A;
+            --blue: #54BAF7; --yellow: #FFD447; --white: #FFFFFF; --black: #000000;
         }
-
         body { 
-            font-family: 'Segoe UI', sans-serif; 
-            background: var(--bg); 
-            color: var(--deep); 
-            margin: 0; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
-            text-align: center; 
-            overflow: hidden; 
+            font-family: sans-serif; background: var(--bg); color: var(--deep); 
+            margin: 0; display: flex; flex-direction: column; align-items: center; 
+            justify-content: center; height: 100vh; text-align: center; overflow: hidden;
         }
-        
         #display-container { height: 250px; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; }
         #key-display { font-size: 7rem; font-weight: 900; color: var(--deep); margin: 0; }
-        
-        /* Shorter and Thicker Progress Bar */
-        #progress-container { 
-            width: 45%; 
-            height: 18px; 
-            background: var(--white); 
-            border: 3px solid var(--black); 
-            border-radius: 20px; 
-            margin-top: 20px; 
-            overflow: hidden; 
-        }
-        #progress-bar { 
-            width: 100%; 
-            height: 100%; 
-            background: var(--blue); 
-            transform-origin: left; 
-            transform: scaleX(0); 
-        }
-
-        .card { 
-            background: var(--white); 
-            padding: 1.5rem; 
-            border-radius: 30px; 
-            box-shadow: 0 10px 0 var(--deep); 
-            width: 85%; 
-            max-width: 400px; 
-            border: 3px solid var(--black); 
-        }
-        
+        #progress-container { width: 45%; height: 18px; background: var(--white); border: 3px solid var(--black); border-radius: 20px; margin-top: 20px; overflow: hidden; }
+        #progress-bar { width: 100%; height: 100%; background: var(--blue); transform-origin: left; transform: scaleX(0); }
+        .card { background: var(--white); padding: 1.5rem; border-radius: 30px; box-shadow: 0 10px 0 var(--deep); width: 85%; max-width: 400px; border: 3px solid var(--black); }
         .modes { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; }
-        .mode-btn { 
-            background: var(--bg); 
-            border: 2px solid var(--deep); 
-            color: var(--deep); 
-            padding: 10px; 
-            border-radius: 12px; 
-            cursor: pointer; 
-            flex: 1; 
-            font-weight: 800; 
-        }
+        .mode-btn { background: var(--bg); border: 2px solid var(--deep); color: var(--deep); padding: 10px; border-radius: 12px; cursor: pointer; flex: 1; font-weight: 800; }
         .mode-btn.active { background: var(--blue); color: var(--white); border-color: var(--black); }
-        
         .main-controls { display: flex; gap: 10px; margin-top: 15px; }
-        button { 
-            border: 2px solid var(--black); 
-            cursor: pointer; 
-            font-weight: 900; 
-            border-radius: 18px; 
-            transition: transform 0.1s; 
-        }
+        button { border: 2px solid var(--black); cursor: pointer; font-weight: 900; border-radius: 18px; transition: transform 0.1s; }
         button:active { transform: translateY(3px); }
-        
         #start-btn { background: var(--blue); color: var(--white); padding: 18px; font-size: 1.2rem; flex: 2; box-shadow: 0 5px 0 var(--deep); }
         #pause-btn { background: var(--yellow); color: var(--deep); padding: 18px; font-size: 1.2rem; flex: 1; display: none; box-shadow: 0 5px 0 var(--black); }
         .stop-active { background: var(--orange) !important; color: var(--white) !important; }
-        
         input[type=range] { width: 100%; margin: 15px 0; accent-color: var(--orange); }
         label { font-weight: 900; font-size: 0.9rem; text-transform: uppercase; }
     </style>
@@ -108,10 +48,8 @@
             <button class="mode-btn" onclick="setMode('major', this)">Major</button>
             <button class="mode-btn" onclick="setMode('minor', this)">Minor</button>
         </div>
-
         <label>Speed: <span id="sec-val">2.0</span>s</label>
         <input type="range" id="sec-slider" min="1.0" max="10" step="0.5" value="2.0">
-        
         <div class="main-controls">
             <button id="start-btn" onclick="toggleStart()">START</button>
             <button id="pause-btn" onclick="togglePause()">PAUSE</button>
@@ -122,27 +60,112 @@
         const majorKeys = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'Db', 'Ab', 'Eb', 'Bb', 'F'];
         const minorKeys = ['Am', 'Em', 'Bm', 'F#m', 'C#m', 'G#m', 'Ebm', 'Bbm', 'Fm', 'Cm', 'Gm', 'Dm'];
         let currentPool = [...majorKeys, ...minorKeys];
-        
         let startTime, remainingTime, totalDuration, rafId, wakeLock = null;
         let isRunning = false, isPaused = false;
 
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const progressBar = document.getElementById('progress-bar');
-        const display = document.getElementById('key-display');
-        const slider = document.getElementById('sec-slider');
-        const startBtn = document.getElementById('start-btn');
-        const pauseBtn = document.getElementById('pause-btn');
+        let audioCtx = null; // Don't init until user clicks
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
 
         async function requestWakeLock() {
-            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); }
-            catch (err) { console.error(err); }
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {
+                console.log("WakeLock failed:", err.message);
+            }
         }
 
         function playBeep() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+            initAudio();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
             osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.5, audioCtx.currentTime); // Volume at 50%
-            gain.gain.exponentialRampToValueAtTime(
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function setMode(mode, btn) {
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentPool = mode === 'major' ? majorKeys : mode === 'minor' ? minorKeys : [...majorKeys, ...minorKeys];
+            if (isRunning && !isPaused) nextKey();
+        }
+
+        function updateFrame() {
+            if (!isRunning || isPaused) return;
+            const now = Date.now();
+            const elapsed = now - startTime;
+            const progress = Math.max(0, 1 - (elapsed / totalDuration));
+            document.getElementById('progress-bar').style.transform = `scaleX(${progress})`;
+            if (elapsed >= totalDuration) nextKey();
+            else rafId = requestAnimationFrame(updateFrame);
+        }
+
+        function nextKey() {
+            cancelAnimationFrame(rafId);
+            let newKey;
+            do { newKey = currentPool[Math.floor(Math.random() * currentPool.length)]; } while (newKey === document.getElementById('key-display').innerText);
+            document.getElementById('key-display').innerText = newKey;
+            playBeep();
+            totalDuration = document.getElementById('sec-slider').value * 1000;
+            startTime = Date.now();
+            updateFrame();
+        }
+
+        function toggleStart() {
+            initAudio(); // Essential for mobile
+            if (isRunning) {
+                isRunning = false; isPaused = false;
+                if (wakeLock) { wakeLock.release(); wakeLock = null; }
+                cancelAnimationFrame(rafId);
+                document.getElementById('start-btn').innerText = "START";
+                document.getElementById('start-btn').classList.remove('stop-active');
+                document.getElementById('pause-btn').style.display = "none";
+                document.getElementById('key-display').innerText = "READY";
+                document.getElementById('progress-bar').style.transform = 'scaleX(0)';
+            } else {
+                requestWakeLock();
+                isRunning = true; isPaused = false;
+                document.getElementById('start-btn').innerText = "STOP";
+                document.getElementById('start-btn').classList.add('stop-active');
+                document.getElementById('pause-btn').style.display = "block";
+                document.getElementById('pause-btn').innerText = "PAUSE";
+                nextKey();
+            }
+        }
+
+        function togglePause() {
+            if (!isPaused) {
+                isPaused = true;
+                cancelAnimationFrame(rafId);
+                remainingTime = totalDuration - (Date.now() - startTime);
+                document.getElementById('pause-btn').innerText = "RESUME";
+            } else {
+                isPaused = false;
+                startTime = Date.now() - (totalDuration - remainingTime);
+                document.getElementById('pause-btn').innerText = "PAUSE";
+                updateFrame();
+            }
+        }
+
+        document.getElementById('sec-slider').oninput = function() {
+            document.getElementById('sec-val').innerText = this.value;
+            if (isRunning && !isPaused) {
+                totalDuration = this.value * 1000;
+                startTime = Date.now();
+            }
+        };
+    </script>
+</body>
+</html>
